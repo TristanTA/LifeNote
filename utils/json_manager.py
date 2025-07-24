@@ -27,3 +27,32 @@ def save_folder_index(index_data, DEBUG=False):
     INDEX_PATH.write_text(json.dumps(index_data, indent=2), encoding="utf-8")
     if DEBUG:
         print("Saving updated folder_index.json.")
+        
+def add_note_to_index(index, folder_path, note_id, filename, tags):
+    """
+    Add a new note to the folder_index at the correct path.
+    Creates folders as needed.
+    """
+    path_parts = folder_path.strip("/").split("/")
+    current = index["root"]
+
+    for part in path_parts:
+        if "children" not in current:
+            current["children"] = {}
+        if part not in current["children"]:
+            current["children"][part] = {
+                "summary": "",
+                "children": {}
+            }
+        current = current["children"][part]
+
+    if "notes" not in current:
+        current["notes"] = []
+
+    # Append the new note
+    current["notes"].append({
+        "id": note_id,
+        "filename": filename,
+        "created_at": datetime.now().isoformat(),
+        "tags": tags
+    })
