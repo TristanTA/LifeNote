@@ -15,7 +15,11 @@ class MainLayout(BoxLayout):
     def record_note(self):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"audio/note_{timestamp}.wav"
+        
         record_voice(filename)
+        transcription = transcribe_audio(filename)
+        Note.create(content=transcription, audio_path=filename, created_at=datetime.now())
+        self.ids.notes_label.text = transcription
 
 class LifenotesApp(App):
     def build(self):
