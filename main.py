@@ -1,7 +1,9 @@
 from utils.db_manager import initialize_db
 import sounddevice as sd
 from scipy.io.wavfile import write
-import datetime
+from utils.transcriber import transcribe_audio
+from utils.db_manager import Note
+from datetime import datetime
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.lang import Builder
