@@ -28,7 +28,7 @@ def save_folder_index(index_data, DEBUG=False):
     if DEBUG:
         print("Saving updated folder_index.json.")
         
-def add_note_to_index(index, folder_path, note_id, filename, tags):
+def add_note_to_index(index, folder_path, note_id, filename, tags, DEBUG=False):
     """
     Add a new note to the folder_index at the correct path.
     Creates folders as needed.
@@ -56,3 +56,5 @@ def add_note_to_index(index, folder_path, note_id, filename, tags):
         "created_at": datetime.now().isoformat(),
         "tags": tags
     })
+    if DEBUG:
+        print(f"Added {filename} to folder_index.json. Tags: {tags}.")
