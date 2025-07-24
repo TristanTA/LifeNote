@@ -7,27 +7,34 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.lang import Builder
 import os
 
+DEBUG = True
+
 Builder.load_file("ui/layout.kv")
 
 class MainLayout(BoxLayout):
     def record_note(self):
-        print("Starting recording...")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"audio/note_{timestamp}.wav"
+        record_voice(filename)
 
 class LifenotesApp(App):
     def build(self):
+        initialize_db
         return MainLayout()
 
 
 def record_voice(filename, duration=5, samplerate=16000):
-    print("Recording...")
+    if DEBUG:
+        print("Recording...")
     recording = sd.rec(int(samplerate * duration), samplerate=samplerate, channels=1)
     sd.wait()
     write(filename, samplerate, recording)
-    print("Saved:", filename)
+    if DEBUG:
+        print("Saved:", filename)
 
 
 def main():
-    initialize_db()
+    pass
 
 
 if __name__ == "__main__":
