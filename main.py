@@ -7,7 +7,7 @@ from datetime import datetime
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.lang import Builder
-import os
+from pathlib import Path
 
 DEBUG = True
 
@@ -30,8 +30,9 @@ class LifenotesApp(App):
 
 
 def record_voice(filename, duration=5, samplerate=16000):
+    Path(filename).parent.mkdir(parents=True, exist_ok=True)
     if DEBUG:
-        print("Recording...")
+        print("Recording... (record_voice)")
     recording = sd.rec(int(samplerate * duration), samplerate=samplerate, channels=1)
     sd.wait()
     write(filename, samplerate, recording)
