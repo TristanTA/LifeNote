@@ -2,8 +2,8 @@
 import json
 from utils.llm import run_llm
 from utils.prompts import CLASSIFY_PROMPT
-from utils.schemas import ClassificationResult
-from utils.folder_index import load_index, iter_folders
+from utils.data_formats import ClassificationResult
+from utils.json_manager import load_index, iter_folders
 from utils.embedding import FolderRetriever
 
 def build_folder_retriever(index):
