@@ -3,6 +3,7 @@ import sounddevice as sd
 from scipy.io.wavfile import write
 from utils.transcriber import transcribe_audio
 from utils.db_manager import Note
+from pipeline.save_note import save_new_note
 from datetime import datetime
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -20,12 +21,12 @@ class MainLayout(BoxLayout):
         
         record_voice(filename)
         transcription = transcribe_audio(filename)
-        Note.create(content=transcription, audio_path=filename, created_at=datetime.now())
-        self.ids.notes_label.text = transcription
+        result = save_new_note(note_text=transcription, audio_path=filename)
+        self.ids.notes_label.text = f"{transcription}\n\n→ Saved to: {result['folder_path']}"
 
 class LifenotesApp(App):
     def build(self):
-        initialize_db
+        initialize_db()
         return MainLayout()
 
 
