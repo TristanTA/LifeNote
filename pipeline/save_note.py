@@ -2,7 +2,7 @@
 from pathlib import Path
 from datetime import datetime
 from utils.db_manager import Note
-from utils.json_manager import load_index, save_index, add_note_to_index
+from utils.json_manager import load_folder_index, save_folder_index, add_note_to_index
 from utils.classifier_llm import classify_with_llm
 from sentence_transformers import SentenceTransformer
 import faiss
@@ -28,9 +28,9 @@ def save_new_note(note_text: str, audio_path: str | None = None):
         audio_dest = folder_dir / audio_src.name
         audio_src.rename(audio_dest)  # Moves the file
 
-    index = load_index()
+    index = load_folder_index()
     add_note_to_index(index, folder_path, note_id, filename, result.tags)
-    save_index(index)
+    save_folder_index(index)
 
     n = Note.create(
         content=note_text,
