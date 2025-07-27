@@ -22,13 +22,21 @@ def save_new_note(note_text: str, audio_path: str | None = None):
     file_path = folder_dir / filename
     file_path.write_text(note_text, encoding="utf-8")
 
+    audio_dest = None
+    if audio_path:
+        audio_src = Path(audio_path)
+        audio_dest = folder_dir / audio_src.name
+        audio_src.rename(audio_dest)  # Moves the file
+
     index = load_index()
     add_note_to_index(index, folder_path, note_id, filename, result.tags)
     save_index(index)
 
     n = Note.create(
         content=note_text,
-        audio_path=audio_path,
+        audio_path=str(audio_dest) if audio_dest else None,
+        folder_path=folder_path,
+        tags=", ".join(result.tags),
         created_at=datetime.now(),
     )
 

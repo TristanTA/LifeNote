@@ -6,6 +6,8 @@ class Note(Model):
     content = TextField()
     audio_path = TextField()
     created_at = DateTimeField()
+    folder_path = TextField(null=True)
+    tags = TextField(null=True)
 
     class Meta:
         database = db
