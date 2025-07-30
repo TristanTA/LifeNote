@@ -42,6 +42,9 @@ class LifenotesApp(MDApp):
         if hasattr(notes_screen, 'on_pre_enter'):
             notes_screen.bind(on_pre_enter=lambda *_: self.load_recent_notes())
 
+        tabs = self.root.ids.screen_manager.get_screen("notes").ids.notes_tabs
+        tabs.bind(on_tab_switch=self.on_tab_switch)
+
     def toggle_recording(self):
         """Triggered when the mic icon is pressed."""
         self.start_recording_animation()
@@ -283,6 +286,63 @@ class LifenotesApp(MDApp):
             if self.audio_data is not None:
                 sd.play(self.audio_data[self.current_time * self.audio_fs:], self.audio_fs)
             self.root.ids.audio_play_pause.icon = "pause"
+
+    def load_folders(self):
+        from utils.json_manager import load_folder_index
+        from kivymd.uix.list import OneLineAvatarIconListItem
+        from kivymd.uix.list import IconLeftWidget
+
+        folder_list = self.root.ids.screen_manager.get_screen("notes").ids.folder_list
+        folder_list.clear_widgets()
+
+        index = load_folder_index()
+        folders = index.keys()
+
+        for folder in folders:
+            item = OneLineAvatarIconListItem(
+                text=folder,
+                on_release=lambda x, f=folder: self.open_folder(f)
+            )
+            item.add_widget(IconLeftWidget(icon="folder"))
+            folder_list.add_widget(item)
+
+    def on_tab_switch(self, instance_tabs, instance_tab, instance_tab_label, tab_text):
+        if tab_text == "Folders":
+            self.load_folders()
+
+    def open_folder(self, folder_name):
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.card import MDCard
+        from kivymd.uix.label import MDLabel
+        from kivy.uix.scrollview import ScrollView
+        from kivy.uix.boxlayout import BoxLayout
+        from utils.json_manager import load_folder_index
+
+        index = load_folder_index()
+        notes = index.get(folder_name, [])
+
+        content = BoxLayout(orientation="vertical", spacing="8dp", padding="8dp")
+        scroll = ScrollView()
+        inner = BoxLayout(orientation="vertical", size_hint_y=None)
+        inner.bind(minimum_height=inner.setter("height"))
+
+        if not notes:
+            inner.add_widget(MDLabel(text="No notes in this folder.", halign="center"))
+        else:
+            for entry in notes:
+                label = MDLabel(
+                    text=f"• {entry['title']}",
+                    theme_text_color="Primary",
+                    size_hint_y=None,
+                    height="36dp"
+                )
+                inner.add_widget(label)
+
+        scroll.add_widget(inner)
+        content.add_widget(scroll)
+
+        self.dialog = MDDialog(title=folder_name, type="custom", content_cls=content)
+        self.dialog.open()
 
 def record_voice(filename, duration=5, samplerate=16000):
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
