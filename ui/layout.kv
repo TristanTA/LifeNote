@@ -84,6 +84,34 @@ MDNavigationLayout:
                             Label:
                                 text: "Folder view coming soon..."
 
+BoxLayout:
+    id: audio_player
+    orientation: "horizontal"
+    size_hint_y: None
+    height: "60dp"
+    padding: dp(10)
+    spacing: dp(10)
+    opacity: 0  # Hidden by default
+
+    MDIconButton:
+        id: audio_play_pause
+        icon: "play"
+        on_release: app.toggle_audio_playback()
+
+    MDLabel:
+        id: audio_time
+        text: "0:00 / 0:00"
+        size_hint_x: 0.2
+        halign: "left"
+
+    Slider:
+        id: audio_slider
+        min: 0
+        max: 100  # Will be updated in Python
+        value: 0
+        on_touch_up: app.scrub_audio(*args)
+        size_hint_x: 0.6
+
     MDNavigationDrawer:
         id: nav_drawer
 
