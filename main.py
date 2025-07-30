@@ -25,7 +25,12 @@ class LifenotesApp(MDApp):
 
     def on_start(self):
         Clock.schedule_once(lambda dt: self.load_recent_notes(), 1)
-        screen_manager.get_screen("notes").bind(on_enter=lambda *_: self.load_recent_notes())
+
+        screen_manager = self.root.ids.screen_manager
+        notes_screen = screen_manager.get_screen("notes")
+
+        if hasattr(notes_screen, 'on_pre_enter'):
+            notes_screen.bind(on_pre_enter=lambda *_: self.load_recent_notes())
 
     def toggle_recording(self):
         """Triggered when the mic icon is pressed."""
