@@ -19,6 +19,16 @@ DEBUG = True
 Builder.load_file("ui/layout.kv")
 
 class LifenotesApp(MDApp):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.audio_data = None
+        self.audio_fs = None
+        self.audio_stream = None
+        self.playback_clock = None
+        self.current_time = 0
+        self.total_time = 0
+        self.playing_note = None
+    
     def build(self):
         initialize_db()
         return self.root  # The root is set by the KV file (MDNavigationLayout)
@@ -149,20 +159,88 @@ class LifenotesApp(MDApp):
             notes_grid.add_widget(card)
             
     def open_note_detail(self, note):
-        from kivymd.toast import toast
+        from soundfile import read
         from pathlib import Path
-        import sounddevice as sd
-        import soundfile as sf
 
-        toast(f"Note: {note.content[:30]}...")
+        self.stop_audio_playback()
 
         if note.audio_path and Path(note.audio_path).exists():
-            data, fs = sf.read(note.audio_path, dtype='float32')
-            sd.play(data, fs)
+            data, fs = read(note.audio_path, dtype='float32')
+            self.audio_data = data
+            self.audio_fs = fs
+            self.playing_note = note
+            self.current_time = 0
+            self.total_time = int(len(data) / fs)
+
+            self.root.ids.audio_slider.max = self.total_time
+            self.root.ids.audio_slider.value = 0
+            self.root.ids.audio_progress = self.root.ids.audio_slider  # Just for clarity if reused
+
+            self.root.ids.audio_time.text = f"0:00 / {self.format_time(self.total_time)}"
+            self.root.ids.audio_play_pause.icon = "pause"
+            self.root.ids.audio_player.opacity = 1
+
+            import sounddevice as sd
+            self.audio_stream = sd.OutputStream(samplerate=fs, channels=1)
+            self.audio_stream.start()
+            self.audio_stream.write(data)
+
+            from kivy.clock import Clock
+            self.playback_clock = Clock.schedule_interval(self.update_playback_progress, 1)
 
     def filter_notes(self, query):
         print("Searching for:", query)
         # Later: filter self.notes and reload grid
+        
+    def toggle_audio_playback(self):
+        import sounddevice as sd
+        if not self.audio_stream:
+            return
+        if self.audio_stream.active:
+            sd.stop()
+            self.audio_stream.stop()
+            self.root.ids.audio_play_pause.icon = "play"
+        else:
+            sd.play(self.audio_data[self.current_time * self.audio_fs:], self.audio_fs)
+            self.root.ids.audio_play_pause.icon = "pause"
+
+    def stop_audio_playback(self):
+        import sounddevice as sd
+        if self.audio_stream:
+            sd.stop()
+            self.audio_stream.stop()
+            self.audio_stream.close()
+            self.audio_stream = None
+        if self.playback_clock:
+            self.playback_clock.cancel()
+            self.playback_clock = None
+        self.root.ids.audio_play_pause.icon = "play"
+        self.root.ids.audio_slider.value = 0
+        self.root.ids.audio_time.text = "0:00 / 0:00"
+        self.root.ids.audio_player.opacity = 0
+    def update_playback_progress(self, dt):
+        self.current_time += 1
+        if self.current_time >= self.total_time:
+            self.stop_audio_playback()
+            return
+        self.root.ids.audio_slider.value = self.current_time
+        self.root.ids.audio_time.text = f"{self.format_time(self.current_time)} / {self.format_time(self.total_time)}"
+
+    @staticmethod
+    def format_time(seconds):
+        m = int(seconds // 60)
+        s = int(seconds % 60)
+        return f"{m}:{s:02}"
+
+    def scrub_audio(self, instance, touch):
+        import sounddevice as sd
+        slider = self.root.ids.audio_slider
+        if slider.collide_point(*touch.pos):
+            self.current_time = int(slider.value)
+            sd.stop()
+            if self.audio_data is not None:
+                sd.play(self.audio_data[self.current_time * self.audio_fs:], self.audio_fs)
+            self.root.ids.audio_play_pause.icon = "pause"
 
 def record_voice(filename, duration=5, samplerate=16000):
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
