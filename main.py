@@ -23,6 +23,10 @@ class LifenotesApp(MDApp):
         initialize_db()
         return self.root  # The root is set by the KV file (MDNavigationLayout)
 
+    def on_start(self):
+        Clock.schedule_once(lambda dt: self.load_recent_notes(), 1)
+        screen_manager.get_screen("notes").bind(on_enter=lambda *_: self.load_recent_notes())
+
     def toggle_recording(self):
         """Triggered when the mic icon is pressed."""
         self.start_recording_animation()
