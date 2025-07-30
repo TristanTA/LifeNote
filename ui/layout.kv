@@ -1,5 +1,3 @@
-pip install kivymd
-
 #:import MDApp kivymd.app.MDApp
 #:import MDIconButton kivymd.uix.button.MDIconButton
 #:import MDFloatLayout kivymd.uix.floatlayout.MDFloatLayout
@@ -11,6 +9,9 @@ pip install kivymd
 #:import MDRaisedButton kivymd.uix.button.MDRaisedButton
 #:import ScreenManager kivy.uix.screenmanager.ScreenManager
 #:import Screen kivy.uix.screenmanager.Screen
+#:import MDTabs kivymd.uix.tab.MDTabs
+#:import MDTabsBase kivymd.uix.tab.MDTabsBase
+#:import dp kivy.metrics.dp
 
 MDNavigationLayout:
 
@@ -23,15 +24,16 @@ MDNavigationLayout:
             MDFloatLayout:
 
                 MDIconButton:
-                    icon: "menu"
-                    pos_hint: {"x": 0, "top": 1}
-                    on_release: nav_drawer.set_state("open")
-
-                MDIconButton:
+                    id: mic_icon
                     icon: "microphone"
                     user_font_size: "72sp"
                     pos_hint: {"center_x": 0.5, "center_y": 0.6}
                     on_release: app.start_recording()
+
+                MDIconButton:
+                    icon: "menu"
+                    pos_hint: {"x": 0, "top": 1}
+                    on_release: nav_drawer.set_state("open")
 
                 MDTextField:
                     id: input_text
@@ -71,19 +73,33 @@ MDNavigationLayout:
                                 GridLayout:
                                     id: notes_grid
                                     cols: 2
-                                    size_hint_y: None
-                                    height: self.minimum_height
                                     spacing: dp(10)
                                     padding: dp(10)
+                                    size_hint_y: None
+                                    height: self.minimum_height
 
                     MDTabsBase:
-									    title: "Folders"
-									    BoxLayout:
-								        orientation: 'vertical'
+                        title: "Folders"
+                        BoxLayout:
+                            orientation: 'vertical'
 
-								        ScrollView:
-							            MDList:
-							              id: folder_list
+                            ScrollView:
+                                GridLayout:
+                                    id: folder_grid
+                                    cols: 1
+                                    spacing: dp(8)
+                                    padding: dp(10)
+                                    size_hint_y: None
+                                    height: self.minimum_height
+
+                            ScrollView:
+                                GridLayout:
+                                    id: folder_notes_grid
+                                    cols: 2
+                                    spacing: dp(10)
+                                    padding: dp(10)
+                                    size_hint_y: None
+                                    height: self.minimum_height
 
 BoxLayout:
     id: audio_player
@@ -108,7 +124,7 @@ BoxLayout:
     Slider:
         id: audio_slider
         min: 0
-        max: 100  # Will be updated in Python
+        max: 100
         value: 0
         on_touch_up: app.scrub_audio(*args)
         size_hint_x: 0.6
