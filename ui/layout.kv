@@ -1,18 +1,81 @@
-<MainLayout>:
-    orientation: "vertical"
-    padding: 20
-    spacing: 20
+pip install kivymd
 
-    Button:
-        text: "Record Note"
-        font_size: 24
-        size_hint_y: 0.2
-        on_press: root.record_note()
+#:import MDApp kivymd.app.MDApp
+#:import MDIconButton kivymd.uix.button.MDIconButton
+#:import MDFloatLayout kivymd.uix.floatlayout.MDFloatLayout
+#:import MDNavigationLayout kivymd.uix.navigationdrawer.MDNavigationLayout
+#:import MDNavigationDrawer kivymd.uix.navigationdrawer.MDNavigationDrawer
+#:import MDList kivymd.uix.list.MDList
+#:import OneLineIconListItem kivymd.uix.list.OneLineIconListItem
+#:import MDTextField kivymd.uix.textfield.MDTextField
+#:import MDRaisedButton kivymd.uix.button.MDRaisedButton
+#:import ScreenManager kivy.uix.screenmanager.ScreenManager
+#:import Screen kivy.uix.screenmanager.Screen
 
-    Label:
-        id: notes_label
-        text: "Saved notes will appear here"
-        font_size: 18
-        halign: "left"
-        valign: "top"
-        text_size: self.size
+MDNavigationLayout:
+
+    ScreenManager:
+        id: screen_manager
+
+        Screen:
+            name: "main"
+
+            MDFloatLayout:
+
+                MDIconButton:
+                    icon: "menu"
+                    pos_hint: {"x": 0, "top": 1}
+                    on_release: nav_drawer.set_state("open")
+
+                MDIconButton:
+                    icon: "microphone"
+                    user_font_size: "72sp"
+                    pos_hint: {"center_x": 0.5, "center_y": 0.6}
+                    on_release: app.start_recording()
+
+                MDTextField:
+                    id: input_text
+                    hint_text: "Type a note..."
+                    size_hint_x: 0.8
+                    pos_hint: {"center_x": 0.5, "y": 0.05}
+                    mode: "rectangle"
+
+                MDRaisedButton:
+                    text: "Send"
+                    pos_hint: {"x": 0.8, "y": 0.05}
+                    on_release: app.send_text_note()
+
+        Screen:
+            name: "notes"
+
+            BoxLayout:
+                orientation: 'vertical'
+
+                MDTextField:
+                    id: search_bar
+                    hint_text: "Search notes..."
+                    size_hint_y: None
+                    height: dp(60)
+
+                GridLayout:
+                    id: notes_grid
+                    cols: 2
+                    spacing: dp(10)
+                    padding: dp(10)
+                    size_hint_y: 1
+
+    MDNavigationDrawer:
+        id: nav_drawer
+
+        MDList:
+            OneLineIconListItem:
+                text: "Home"
+                on_release:
+                    screen_manager.current = "main"
+                    nav_drawer.set_state("close")
+
+            OneLineIconListItem:
+                text: "Notes"
+                on_release:
+                    screen_manager.current = "notes"
+                    nav_drawer.set_state("close")
