@@ -78,6 +78,33 @@ class LifenotesApp(MDApp):
             self.anim.cancel(mic)
         mic.user_font_size = "72sp"
         mic.text_color = (1, 1, 1, 1)
+        
+    def load_recent_notes(self):
+        from utils.db_manager import Note
+        from kivymd.uix.card import MDCard
+        from kivymd.uix.label import MDLabel
+        from kivy.uix.boxlayout import BoxLayout
+
+        notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
+        notes_grid.clear_widgets()
+
+        # Load most recent 10 notes
+        notes = Note.select().order_by(Note.created_at.desc()).limit(10)
+
+        for note in notes:
+            card = MDCard(
+                orientation="vertical",
+                padding="8dp",
+                size_hint=(1, None),
+                height="120dp",
+                ripple_behavior=True,
+                on_release=lambda n=note: self.open_note_detail(n)
+            )
+
+            card.add_widget(MDLabel(text=note.content[:100] + "...", theme_text_color="Secondary"))
+            card.add_widget(MDLabel(text=f"📁 {note.folder_path}", font_style="Caption"))
+
+            notes_grid.add_widget(card)
 
 def record_voice(filename, duration=5, samplerate=16000):
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
