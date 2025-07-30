@@ -1,22 +1,28 @@
-from utils.db_manager import initialize_db
+from utils.db_manager import initialize_db, Note
 from utils.transcriber import transcribe_audio
-from utils.db_manager import Note
 from pipeline.save_note import save_new_note
+from utils.json_manager import load_folder_index
 
 from datetime import datetime
 from pathlib import Path
 import sounddevice as sd
 from scipy.io.wavfile import write
+from soundfile import read
 
 from kivymd.app import MDApp
-from kivy.animation import Animation
-from kivy.clock import Clock
+from kivymd.uix.card import MDCard
+from kivymd.uix.label import MDLabel
+from kivymd.uix.list import OneLineAvatarIconListItem, IconLeftWidget
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.scrollview import ScrollView
 from kivy.lang import Builder
+from kivy.clock import Clock
+from kivy.animation import Animation
 
 DEBUG = True
 
-# Load the updated multi-screen KV layout
 Builder.load_file("ui/layout.kv")
+
 
 class LifenotesApp(MDApp):
     def __init__(self, **kwargs):
@@ -28,64 +34,47 @@ class LifenotesApp(MDApp):
         self.current_time = 0
         self.total_time = 0
         self.playing_note = None
-    
+
     def build(self):
         initialize_db()
-        return self.root  # The root is set by the KV file (MDNavigationLayout)
+        return self.root
 
     def on_start(self):
         Clock.schedule_once(lambda dt: self.load_recent_notes(), 1)
-
-        screen_manager = self.root.ids.screen_manager
-        notes_screen = screen_manager.get_screen("notes")
-
-        if hasattr(notes_screen, 'on_pre_enter'):
-            notes_screen.bind(on_pre_enter=lambda *_: self.load_recent_notes())
-
         tabs = self.root.ids.screen_manager.get_screen("notes").ids.notes_tabs
         tabs.bind(on_tab_switch=self.on_tab_switch)
 
     def toggle_recording(self):
-        """Triggered when the mic icon is pressed."""
         self.start_recording_animation()
-
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"audio/note_{timestamp}.wav"
-        
-        # Start audio recording in a thread-safe way
+
         def record_and_save(_):
             record_voice(filename)
             transcription = transcribe_audio(filename)
-            result = save_new_note(note_text=transcription, audio_path=filename)
+            save_new_note(note_text=transcription, audio_path=filename)
 
-            # Update the UI (must be scheduled on the main thread)
-            def update_label(dt):
-                self.root.ids.input_text.text = ""  # Clear input
-                self.root.ids.screen_manager.get_screen("main").ids.input_text.text = ""
-                self.root.ids.screen_manager.get_screen("main").ids.mic_icon.text_color = (1, 1, 1, 1)
-                self.root.ids.screen_manager.get_screen("main").ids.mic_icon.user_font_size = "72sp"
-                self.root.ids.screen_manager.get_screen("main").ids.mic_icon.icon = "microphone"
-                self.root.ids.screen_manager.get_screen("main").ids.input_text.hint_text = f"{transcription[:50]}..."
-            Clock.schedule_once(update_label)
+            def update_ui(dt):
+                main_screen = self.root.ids.screen_manager.get_screen("main")
+                main_screen.ids.input_text.text = ""
+                main_screen.ids.mic_icon.text_color = (1, 1, 1, 1)
+                main_screen.ids.mic_icon.user_font_size = "72sp"
+                main_screen.ids.mic_icon.icon = "microphone"
+                main_screen.ids.input_text.hint_text = f"{transcription[:50]}..."
+                self.load_recent_notes()
+            Clock.schedule_once(update_ui)
 
-        Clock.schedule_once(record_and_save, 0)  # async wrapper
+        Clock.schedule_once(record_and_save, 0)
         Clock.schedule_once(lambda dt: self.stop_recording_animation(), 5)
 
     def send_text_note(self):
-        """Triggered when the Send button is pressed."""
         text = self.root.ids.screen_manager.get_screen("main").ids.input_text.text.strip()
         if not text:
             return
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        fake_audio_path = f"audio/note_{timestamp}.wav"
-
-        result = save_new_note(note_text=text, audio_path=None)
-        if DEBUG:
-            print("Text note saved:", result)
-
+        save_new_note(note_text=text)
         self.root.ids.screen_manager.get_screen("main").ids.input_text.text = ""
         self.root.ids.screen_manager.get_screen("main").ids.input_text.hint_text = "Note saved!"
+        self.load_recent_notes()
 
     def start_recording_animation(self):
         mic = self.root.ids.screen_manager.get_screen("main").ids.mic_icon
@@ -100,33 +89,21 @@ class LifenotesApp(MDApp):
             self.anim.cancel(mic)
         mic.user_font_size = "72sp"
         mic.text_color = (1, 1, 1, 1)
-        
-    def load_recent_notes(self):
-        from kivymd.uix.card import MDCard
-        from kivymd.uix.label import MDLabel
-        from kivy.uix.boxlayout import BoxLayout
 
-        # Clear previous widgets
+    def load_recent_notes(self):
         notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
         notes_grid.clear_widgets()
-
         self.all_notes = list(Note.select().order_by(Note.created_at.desc()).limit(50))
-        notes = self.all_notes
-        
-        if not notes:
-            # Show fallback label
-            notes_grid.add_widget(
-                MDLabel(
-                    text="No notes found. Try recording or typing one!",
-                    halign="center",
-                    theme_text_color="Hint",
-                    size_hint_y=None,
-                    height="48dp"
-                )
-            )
+
+        if not self.all_notes:
+            notes_grid.add_widget(MDLabel(
+                text="No notes found. Try recording or typing one!",
+                halign="center", theme_text_color="Hint",
+                size_hint_y=None, height="48dp"
+            ))
             return
 
-        for note in notes:
+        for note in self.all_notes:
             card = MDCard(
                 orientation="vertical",
                 padding="12dp",
@@ -137,149 +114,49 @@ class LifenotesApp(MDApp):
                 ripple_behavior=True,
                 on_release=lambda n=note: self.open_note_detail(n)
             )
-
-            # Create inner layout
             layout = BoxLayout(orientation="vertical", padding=(8, 4), spacing=4)
-
-            # Add note content preview
-            layout.add_widget(
-                MDLabel(
-                    text=note.content[:100] + "...",
-                    theme_text_color="Primary",
-                    font_style="Body1"
-                )
-            )
-
-            # Add folder info
-            layout.add_widget(
-                MDLabel(
-                    text=f"📁 {note.folder_path}",
-                    font_style="Caption",
-                    theme_text_color="Hint"
-                )
-            )
-
+            layout.add_widget(MDLabel(text=note.content[:100] + "...", font_style="Body1"))
+            layout.add_widget(MDLabel(text=f"📁 {note.folder_path}", font_style="Caption", theme_text_color="Hint"))
             card.add_widget(layout)
             notes_grid.add_widget(card)
-            
+
     def open_note_detail(self, note):
-        from soundfile import read
-        from pathlib import Path
-
         self.stop_audio_playback()
-
         if note.audio_path and Path(note.audio_path).exists():
-            data, fs = read(note.audio_path, dtype='float32')
-            self.audio_data = data
-            self.audio_fs = fs
+            self.audio_data, self.audio_fs = read(note.audio_path, dtype='float32')
             self.playing_note = note
             self.current_time = 0
-            self.total_time = int(len(data) / fs)
+            self.total_time = int(len(self.audio_data) / self.audio_fs)
 
             self.root.ids.audio_slider.max = self.total_time
             self.root.ids.audio_slider.value = 0
-            self.root.ids.audio_progress = self.root.ids.audio_slider  # Just for clarity if reused
-
             self.root.ids.audio_time.text = f"0:00 / {self.format_time(self.total_time)}"
             self.root.ids.audio_play_pause.icon = "pause"
             self.root.ids.audio_player.opacity = 1
 
-            import sounddevice as sd
-            self.audio_stream = sd.OutputStream(samplerate=fs, channels=1)
-            self.audio_stream.start()
-            self.audio_stream.write(data)
-
-            from kivy.clock import Clock
+            sd.play(self.audio_data, self.audio_fs)
             self.playback_clock = Clock.schedule_interval(self.update_playback_progress, 1)
 
-    def filter_notes(self, query):
-        from kivymd.uix.card import MDCard
-        from kivymd.uix.label import MDLabel
-        from kivy.uix.boxlayout import BoxLayout
+    def stop_audio_playback(self):
+        sd.stop()
+        if self.playback_clock:
+            self.playback_clock.cancel()
+            self.playback_clock = None
+        self.root.ids.audio_slider.value = 0
+        self.root.ids.audio_time.text = "0:00 / 0:00"
+        self.root.ids.audio_player.opacity = 0
+        self.root.ids.audio_play_pause.icon = "play"
 
-        notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
-        notes_grid.clear_widgets()
-
-        # If query is empty, show latest 10 notes
-        if not query.strip():
-            notes = Note.select().order_by(Note.created_at.desc()).limit(10)
-        else:
-            query_lower = query.lower()
-            notes = Note.select().where(
-                (Note.content.contains(query_lower)) |
-                (Note.tags.contains(query_lower)) |
-                (Note.folder_path.contains(query_lower))
-            ).order_by(Note.created_at.desc()).limit(20)
-
-        if not notes:
-            notes_grid.add_widget(
-                MDLabel(
-                    text="No matching notes found.",
-                    halign="center",
-                    theme_text_color="Hint",
-                    size_hint_y=None,
-                    height="48dp"
-                )
-            )
-            return
-
-        for note in notes:
-            card = MDCard(
-                orientation="vertical",
-                padding="12dp",
-                radius=[12, 12, 12, 12],
-                size_hint=(1, None),
-                height="140dp",
-                elevation=3,
-                ripple_behavior=True,
-                on_release=lambda n=note: self.open_note_detail(n)
-            )
-
-            layout = BoxLayout(orientation="vertical", padding=(8, 4), spacing=4)
-            layout.add_widget(
-                MDLabel(
-                    text=note.content[:100] + "...",
-                    theme_text_color="Primary",
-                    font_style="Body1"
-                )
-            )
-            layout.add_widget(
-                MDLabel(
-                    text=f"📁 {note.folder_path}",
-                    font_style="Caption",
-                    theme_text_color="Hint"
-                )
-            )
-
-            card.add_widget(layout)
-            notes_grid.add_widget(card)
-        
     def toggle_audio_playback(self):
-        import sounddevice as sd
-        if not self.audio_stream:
+        if not self.audio_data:
             return
-        if self.audio_stream.active:
+        if sd.get_stream().active:
             sd.stop()
-            self.audio_stream.stop()
             self.root.ids.audio_play_pause.icon = "play"
         else:
             sd.play(self.audio_data[self.current_time * self.audio_fs:], self.audio_fs)
             self.root.ids.audio_play_pause.icon = "pause"
 
-    def stop_audio_playback(self):
-        import sounddevice as sd
-        if self.audio_stream:
-            sd.stop()
-            self.audio_stream.stop()
-            self.audio_stream.close()
-            self.audio_stream = None
-        if self.playback_clock:
-            self.playback_clock.cancel()
-            self.playback_clock = None
-        self.root.ids.audio_play_pause.icon = "play"
-        self.root.ids.audio_slider.value = 0
-        self.root.ids.audio_time.text = "0:00 / 0:00"
-        self.root.ids.audio_player.opacity = 0
     def update_playback_progress(self, dt):
         self.current_time += 1
         if self.current_time >= self.total_time:
@@ -288,34 +165,58 @@ class LifenotesApp(MDApp):
         self.root.ids.audio_slider.value = self.current_time
         self.root.ids.audio_time.text = f"{self.format_time(self.current_time)} / {self.format_time(self.total_time)}"
 
-    @staticmethod
-    def format_time(seconds):
-        m = int(seconds // 60)
-        s = int(seconds % 60)
-        return f"{m}:{s:02}"
-
     def scrub_audio(self, instance, touch):
-        import sounddevice as sd
-        slider = self.root.ids.audio_slider
-        if slider.collide_point(*touch.pos):
-            self.current_time = int(slider.value)
+        if instance.collide_point(*touch.pos):
+            self.current_time = int(instance.value)
             sd.stop()
-            if self.audio_data is not None:
-                sd.play(self.audio_data[self.current_time * self.audio_fs:], self.audio_fs)
+            sd.play(self.audio_data[self.current_time * self.audio_fs:], self.audio_fs)
             self.root.ids.audio_play_pause.icon = "pause"
 
-    def load_folders(self):
-        from utils.json_manager import load_folder_index
-        from kivymd.uix.list import OneLineAvatarIconListItem
-        from kivymd.uix.list import IconLeftWidget
+    @staticmethod
+    def format_time(seconds):
+        m, s = divmod(int(seconds), 60)
+        return f"{m}:{s:02}"
 
+    def filter_notes(self, query):
+        notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
+        notes_grid.clear_widgets()
+        query_lower = query.strip().lower()
+
+        filtered_notes = [n for n in self.all_notes if
+                          query_lower in n.content.lower() or
+                          query_lower in n.folder_path.lower() or
+                          query_lower in n.tags.lower()]
+
+        if not filtered_notes:
+            notes_grid.add_widget(MDLabel(
+                text="No matching notes found.",
+                halign="center", theme_text_color="Hint",
+                size_hint_y=None, height="48dp"
+            ))
+            return
+
+        for note in filtered_notes:
+            card = MDCard(
+                orientation="vertical",
+                padding="12dp",
+                radius=[12, 12, 12, 12],
+                size_hint=(1, None),
+                height="140dp",
+                elevation=3,
+                ripple_behavior=True,
+                on_release=lambda n=note: self.open_note_detail(n)
+            )
+            layout = BoxLayout(orientation="vertical", padding=(8, 4), spacing=4)
+            layout.add_widget(MDLabel(text=note.content[:100] + "...", font_style="Body1"))
+            layout.add_widget(MDLabel(text=f"📁 {note.folder_path}", font_style="Caption", theme_text_color="Hint"))
+            card.add_widget(layout)
+            notes_grid.add_widget(card)
+
+    def load_folders(self):
         folder_list = self.root.ids.screen_manager.get_screen("notes").ids.folder_list
         folder_list.clear_widgets()
-
         index = load_folder_index()
-        folders = index.keys()
-
-        for folder in folders:
+        for folder in index:
             item = OneLineAvatarIconListItem(
                 text=folder,
                 on_release=lambda x, f=folder: self.open_folder(f)
@@ -323,53 +224,26 @@ class LifenotesApp(MDApp):
             item.add_widget(IconLeftWidget(icon="folder"))
             folder_list.add_widget(item)
 
+    def open_folder(self, folder):
+        from kivymd.toast import toast
+        toast(f"Open folder: {folder}")
+        # Later: implement showing notes inside selected folder
+
     def on_tab_switch(self, instance_tabs, instance_tab, instance_tab_label, tab_text):
         if tab_text == "Folders":
             self.load_folders()
 
-    def open_folder(self, folder_name):
-        from kivymd.uix.dialog import MDDialog
-        from kivymd.uix.card import MDCard
-        from kivymd.uix.label import MDLabel
-        from kivy.uix.scrollview import ScrollView
-        from kivy.uix.boxlayout import BoxLayout
-        from utils.json_manager import load_folder_index
-
-        index = load_folder_index()
-        notes = index.get(folder_name, [])
-
-        content = BoxLayout(orientation="vertical", spacing="8dp", padding="8dp")
-        scroll = ScrollView()
-        inner = BoxLayout(orientation="vertical", size_hint_y=None)
-        inner.bind(minimum_height=inner.setter("height"))
-
-        if not notes:
-            inner.add_widget(MDLabel(text="No notes in this folder.", halign="center"))
-        else:
-            for entry in notes:
-                label = MDLabel(
-                    text=f"• {entry['title']}",
-                    theme_text_color="Primary",
-                    size_hint_y=None,
-                    height="36dp"
-                )
-                inner.add_widget(label)
-
-        scroll.add_widget(inner)
-        content.add_widget(scroll)
-
-        self.dialog = MDDialog(title=folder_name, type="custom", content_cls=content)
-        self.dialog.open()
 
 def record_voice(filename, duration=5, samplerate=16000):
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
     if DEBUG:
-        print("Recording... (record_voice)")
+        print("Recording...")
     recording = sd.rec(int(samplerate * duration), samplerate=samplerate, channels=1)
     sd.wait()
     write(filename, samplerate, recording)
     if DEBUG:
         print("Saved:", filename)
+
 
 if __name__ == "__main__":
     LifenotesApp().run()
