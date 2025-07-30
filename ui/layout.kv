@@ -77,12 +77,13 @@ MDNavigationLayout:
                                     padding: dp(10)
 
                     MDTabsBase:
-                        title: "Folders"
-                        BoxLayout:
-                            orientation: 'vertical'
+									    title: "Folders"
+									    BoxLayout:
+								        orientation: 'vertical'
 
-                            Label:
-                                text: "Folder view coming soon..."
+								        ScrollView:
+							            MDList:
+							              id: folder_list
 
 BoxLayout:
     id: audio_player
