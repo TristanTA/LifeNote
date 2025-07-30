@@ -56,13 +56,33 @@ MDNavigationLayout:
                     hint_text: "Search notes..."
                     size_hint_y: None
                     height: dp(60)
+                    on_text: app.filter_notes(self.text)
 
-                GridLayout:
-                    id: notes_grid
-                    cols: 2
-                    spacing: dp(10)
-                    padding: dp(10)
-                    size_hint_y: 1
+                MDTabs:
+                    id: notes_tabs
+                    tab_hint_x: True
+
+                    MDTabsBase:
+                        title: "Recent Notes"
+                        BoxLayout:
+                            orientation: 'vertical'
+
+                            ScrollView:
+                                GridLayout:
+                                    id: notes_grid
+                                    cols: 2
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    spacing: dp(10)
+                                    padding: dp(10)
+
+                    MDTabsBase:
+                        title: "Folders"
+                        BoxLayout:
+                            orientation: 'vertical'
+
+                            Label:
+                                text: "Folder view coming soon..."
 
     MDNavigationDrawer:
         id: nav_drawer
