@@ -105,6 +105,18 @@ class LifenotesApp(MDApp):
             card.add_widget(MDLabel(text=f"📁 {note.folder_path}", font_style="Caption"))
 
             notes_grid.add_widget(card)
+            
+    def open_note_detail(self, note):
+        from kivymd.toast import toast
+        from pathlib import Path
+        import sounddevice as sd
+        import soundfile as sf
+
+        toast(f"Note: {note.content[:30]}...")
+
+        if note.audio_path and Path(note.audio_path).exists():
+            data, fs = sf.read(note.audio_path, dtype='float32')
+            sd.play(data, fs)
 
 def record_voice(filename, duration=5, samplerate=16000):
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
