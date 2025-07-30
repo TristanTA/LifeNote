@@ -107,8 +107,9 @@ class LifenotesApp(MDApp):
         notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
         notes_grid.clear_widgets()
 
-        notes = Note.select().order_by(Note.created_at.desc()).limit(10)
-
+        self.all_notes = list(Note.select().order_by(Note.created_at.desc()).limit(50))
+        notes = self.all_notes
+        
         if not notes:
             # Show fallback label
             notes_grid.add_widget(
@@ -189,8 +190,49 @@ class LifenotesApp(MDApp):
             self.playback_clock = Clock.schedule_interval(self.update_playback_progress, 1)
 
     def filter_notes(self, query):
-        print("Searching for:", query)
-        # Later: filter self.notes and reload grid
+        from kivymd.uix.label import MDLabel
+        from kivymd.uix.card import MDCard
+        from kivy.uix.boxlayout import BoxLayout
+
+        query = query.lower().strip()
+        notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
+        notes_grid.clear_widgets()
+
+        if not query:
+            matching_notes = self.all_notes
+        else:
+            matching_notes = [n for n in self.all_notes if query in n.content.lower() or query in n.tags.lower()]
+
+        if not matching_notes:
+            notes_grid.add_widget(
+                MDLabel(
+                    text="No matching notes found.",
+                    halign="center",
+                    theme_text_color="Hint",
+                    size_hint_y=None,
+                    height="48dp"
+                )
+            )
+            return
+
+        for note in matching_notes:
+            card = MDCard(
+                orientation="vertical",
+                padding="12dp",
+                radius=[12, 12, 12, 12],
+                size_hint=(1, None),
+                height="140dp",
+                elevation=3,
+                ripple_behavior=True,
+                on_release=lambda n=note: self.open_note_detail(n)
+            )
+
+            layout = BoxLayout(orientation="vertical", padding=(8, 4), spacing=4)
+            layout.add_widget(MDLabel(text=note.content[:100] + "...", theme_text_color="Primary", font_style="Body1"))
+            layout.add_widget(MDLabel(text=f"📁 {note.folder_path}", font_style="Caption", theme_text_color="Hint"))
+
+            card.add_widget(layout)
+            notes_grid.add_widget(card)
         
     def toggle_audio_playback(self):
         import sounddevice as sd
