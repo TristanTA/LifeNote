@@ -89,30 +89,63 @@ class LifenotesApp(MDApp):
         mic.text_color = (1, 1, 1, 1)
         
     def load_recent_notes(self):
-        from utils.db_manager import Note
         from kivymd.uix.card import MDCard
         from kivymd.uix.label import MDLabel
         from kivy.uix.boxlayout import BoxLayout
 
+        # Clear previous widgets
         notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
         notes_grid.clear_widgets()
 
-        # Load most recent 10 notes
         notes = Note.select().order_by(Note.created_at.desc()).limit(10)
+
+        if not notes:
+            # Show fallback label
+            notes_grid.add_widget(
+                MDLabel(
+                    text="No notes found. Try recording or typing one!",
+                    halign="center",
+                    theme_text_color="Hint",
+                    size_hint_y=None,
+                    height="48dp"
+                )
+            )
+            return
 
         for note in notes:
             card = MDCard(
                 orientation="vertical",
-                padding="8dp",
+                padding="12dp",
+                radius=[12, 12, 12, 12],
                 size_hint=(1, None),
-                height="120dp",
+                height="140dp",
+                elevation=3,
                 ripple_behavior=True,
                 on_release=lambda n=note: self.open_note_detail(n)
             )
 
-            card.add_widget(MDLabel(text=note.content[:100] + "...", theme_text_color="Secondary"))
-            card.add_widget(MDLabel(text=f"📁 {note.folder_path}", font_style="Caption"))
+            # Create inner layout
+            layout = BoxLayout(orientation="vertical", padding=(8, 4), spacing=4)
 
+            # Add note content preview
+            layout.add_widget(
+                MDLabel(
+                    text=note.content[:100] + "...",
+                    theme_text_color="Primary",
+                    font_style="Body1"
+                )
+            )
+
+            # Add folder info
+            layout.add_widget(
+                MDLabel(
+                    text=f"📁 {note.folder_path}",
+                    font_style="Caption",
+                    theme_text_color="Hint"
+                )
+            )
+
+            card.add_widget(layout)
             notes_grid.add_widget(card)
             
     def open_note_detail(self, note):
