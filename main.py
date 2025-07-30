@@ -193,20 +193,25 @@ class LifenotesApp(MDApp):
             self.playback_clock = Clock.schedule_interval(self.update_playback_progress, 1)
 
     def filter_notes(self, query):
-        from kivymd.uix.label import MDLabel
         from kivymd.uix.card import MDCard
+        from kivymd.uix.label import MDLabel
         from kivy.uix.boxlayout import BoxLayout
 
-        query = query.lower().strip()
         notes_grid = self.root.ids.screen_manager.get_screen("notes").ids.notes_grid
         notes_grid.clear_widgets()
 
-        if not query:
-            matching_notes = self.all_notes
+        # If query is empty, show latest 10 notes
+        if not query.strip():
+            notes = Note.select().order_by(Note.created_at.desc()).limit(10)
         else:
-            matching_notes = [n for n in self.all_notes if query in n.content.lower() or query in n.tags.lower()]
+            query_lower = query.lower()
+            notes = Note.select().where(
+                (Note.content.contains(query_lower)) |
+                (Note.tags.contains(query_lower)) |
+                (Note.folder_path.contains(query_lower))
+            ).order_by(Note.created_at.desc()).limit(20)
 
-        if not matching_notes:
+        if not notes:
             notes_grid.add_widget(
                 MDLabel(
                     text="No matching notes found.",
@@ -218,7 +223,7 @@ class LifenotesApp(MDApp):
             )
             return
 
-        for note in matching_notes:
+        for note in notes:
             card = MDCard(
                 orientation="vertical",
                 padding="12dp",
@@ -231,8 +236,20 @@ class LifenotesApp(MDApp):
             )
 
             layout = BoxLayout(orientation="vertical", padding=(8, 4), spacing=4)
-            layout.add_widget(MDLabel(text=note.content[:100] + "...", theme_text_color="Primary", font_style="Body1"))
-            layout.add_widget(MDLabel(text=f"📁 {note.folder_path}", font_style="Caption", theme_text_color="Hint"))
+            layout.add_widget(
+                MDLabel(
+                    text=note.content[:100] + "...",
+                    theme_text_color="Primary",
+                    font_style="Body1"
+                )
+            )
+            layout.add_widget(
+                MDLabel(
+                    text=f"📁 {note.folder_path}",
+                    font_style="Caption",
+                    theme_text_color="Hint"
+                )
+            )
 
             card.add_widget(layout)
             notes_grid.add_widget(card)
