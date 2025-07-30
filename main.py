@@ -122,6 +122,10 @@ class LifenotesApp(MDApp):
             data, fs = sf.read(note.audio_path, dtype='float32')
             sd.play(data, fs)
 
+    def filter_notes(self, query):
+        print("Searching for:", query)
+        # Later: filter self.notes and reload grid
+
 def record_voice(filename, duration=5, samplerate=16000):
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
     if DEBUG:
