@@ -8,22 +8,23 @@ from inputs.audio.audio_recorder import AudioRecorder
 def display_audio_ui():
     st.title("Record Audio")
 
-    recorder = AudioRecorder()
-
     ctx = webrtc_streamer(
         key="audio",
         mode=WebRtcMode.SENDONLY,
         audio_receiver_size=256,
-        audio_processor_factory=lambda: recorder,
+        audio_processor_factory=AudioRecorder,
         media_stream_constraints={"audio": True, "video": False},
     )
 
-    if ctx.state.playing:
+    if ctx.state.playing and ctx.audio_processor:
         if st.button("Stop & Save"):
+            recorder = ctx.audio_processor
             filename = recorder.save_wav()
             if filename:
                 st.success(f"Audio saved to {filename}")
-                output_text = transcribe_audio(filename)
+                text = transcribe_audio(filename)
+                st.subheader("Transcribed text:")
+                st.write(text)
             else:
                 st.warning("No audio frames captured yet.")
-    return output_text if 'output_text' in locals() else ""
+    return text if 'text' in locals() else ""
