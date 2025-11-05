@@ -6,7 +6,5 @@ def main():
 
     audio_text = display_audio_ui()
 
-    st.success(audio_text)
-
 if __name__ == "__main__":
     main() 
