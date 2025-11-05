@@ -4,6 +4,9 @@ from inputs.audio.recorder import AudioRecorder
 from inputs.audio.whisper_model import transcribe_audio
 import os, time
 
+def dummy_video_frame_callback(frame):
+    return frame
+
 def display_audio_ui():
     st.title("🎙 Audio Debug Mode")
 
@@ -15,11 +18,17 @@ def display_audio_ui():
         mode=WebRtcMode.SENDRECV,
         audio_receiver_size=256,
         audio_processor_factory=AudioRecorder,
-        media_stream_constraints={"audio": True, "video": False},
+        video_frame_callback=dummy_video_frame_callback,
+        media_stream_constraints={
+            "audio": {
+                "echoCancellation": True,
+                "noiseSuppression": True,
+                "autoGainControl": True,
+            },
+            "video": False,
+        },
         rtc_configuration={
-            "iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]}  # adds public STUN server
-            ]
+            "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
         },
     )
 
