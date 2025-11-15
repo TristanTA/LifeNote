@@ -54,25 +54,7 @@ themes = {
     },
 }
 
-
-PREFERENCES_FILE = "data/user/preferences.json"
-
-def load_preferences():
-    if not os.path.exists(PREFERENCES_FILE):
-        default = {"theme": "Fieldstone"}
-        os.makedirs(os.path.dirname(PREFERENCES_FILE), exist_ok=True)
-        with open(PREFERENCES_FILE, "w") as f:
-            json.dump(default, f, indent=4)
-        return default
-    with open(PREFERENCES_FILE, "r") as f:
-        return json.load(f)
-
-def save_preferences(prefs):
-    with open(PREFERENCES_FILE, "w") as f:
-        json.dump(prefs, f, indent=4)
-
-def apply_theme(theme):
-    print("theme75 theme", theme)
+def apply_theme(theme = "Graphite Calm"):
     if isinstance(theme, str):
         theme = themes[theme]
     if isinstance(theme, dict):
@@ -204,36 +186,3 @@ def apply_theme(theme):
         }}
         </style>
     """, unsafe_allow_html=True)
-    print("Apply function Theme", st.session_state.theme)
-    return st.session_state["theme"]
-
-def render_theme_settings():
-    current_theme = st.session_state.theme
-    print(f"render_theme_settings: current_theme from session_state = {current_theme}")
-
-    selected = st.selectbox(
-        "Choose a theme",
-        list(themes.keys())
-    )
-    print(f"render_theme_settings: selected from selectbox = {selected}")
-
-    if selected != current_theme:
-        print(f"render_theme_settings: Theme changed from {current_theme} to {selected}")
-        st.session_state.theme = selected
-        print(f"render_theme_settings: Updated session_state.theme = {st.session_state.theme}")
-        
-        # Save to file
-        prefs_to_save = {"theme": selected}
-        print(f"render_theme_settings: Saving to file: {prefs_to_save}")
-        save_preferences(prefs_to_save)
-        
-        # Verify it was saved
-        loaded = load_preferences()
-        print(f"render_theme_settings: Verified file contents: {loaded}")
-        
-        st.success(f"Theme changed to {selected}")
-        st.rerun()
-    else:
-        print(f"render_theme_settings: No change detected, selected={selected}, current={current_theme}")
-
-    st.write(f"Active theme: {st.session_state['theme']}")

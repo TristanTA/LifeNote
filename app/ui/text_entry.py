@@ -4,8 +4,5 @@ from data.schemas.text_schema import Text
 
 def render_text_entry():
     content = streamlit_editorjs()
-
-    st.write("### Output:")
-    st.json(content)
     package = Text(content=str(content))
     return package
