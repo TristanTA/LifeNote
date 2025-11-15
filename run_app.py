@@ -27,6 +27,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-# Change ui to have tabs MICAP, each stage, and overview analysis
