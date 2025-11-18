@@ -14,18 +14,17 @@ def main():
     if "page" not in st.session_state:
         st.session_state["page"] = "Home"
 
-    page = render_side_bar()
-    if page:
-        st.session_state["page"] = page
+    selected = render_side_bar()
+
+    if selected is not None:
+        st.session_state.page = selected
 
     if st.session_state["page"] == "Home":
-        session = render_home()
-        managers["raw_data_manager"].store_session(session)
+        render_home()
     elif st.session_state["page"] == "Notes Explorer":
         render_notes_explorer()
     elif st.session_state["page"] == "Settings":
         render_settings()
-
 
 if __name__ == "__main__":
     main()

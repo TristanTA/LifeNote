@@ -8,3 +8,12 @@ class Text:
         self.content = content
         self.tags = []
         self.title = ""
+
+    def get_all(self):
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "content": self.content,
+            "tags": self.tags,
+            "title": self.title
+        }

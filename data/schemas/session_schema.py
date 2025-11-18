@@ -13,11 +13,5 @@ class Session:
         self.text.append(text)
 
     def get_all(self):
-        package = (
-            {
-                "id": self.id,
-                "timestamp": self.timestamp.isoformat(),
-                "text": [t.get_all() for t in self.text],
-            }
-        )
+        package = (f"Id: {self.id}\nTimestamp: {self.timestamp.isoformat()}\nText: {[t.get_all() for t in self.text]}")
         return package
