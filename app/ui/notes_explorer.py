@@ -1,58 +1,102 @@
 import streamlit as st
 import os
+import json
+from pathlib import Path
+from streamlit_tree_select import tree_select
+import ast
 
-ROOT = "notes/"
+from app.ui.editor import render_editor_content
+
+ROOT = "notes"
+
 
 def render_notes_explorer():
-    os.makedirs(ROOT, exist_ok=True)
+    Path(ROOT).mkdir(parents=True, exist_ok=True)
 
-    if "nav_stack" not in st.session_state:
-        st.session_state.nav_stack = []
+    st.header("Notes Explorer")
 
-    current_path = os.path.join(ROOT, *st.session_state.nav_stack)
+    tree = build_notes_tree(ROOT)
+    selection = tree_select(tree, check_model="all", no_cascade=True)
 
-    st.title("Notes Explorer")
+    if selection and selection["checked"]:
+        filepath = selection["checked"][0]
+        note = load_note_from_file(filepath)
+        display_note_pretty(note)
 
-    dirs, files = list_directory(current_path)
+def build_notes_tree(path):
+    nodes = []
+    for item in os.listdir(path):
+        full_path = os.path.join(path, item)
 
-    if st.session_state.nav_stack:
-        if st.button("⬅ Back"):
-            st.session_state.nav_stack.pop()
-
-    st.write("Folders")
-    for d in dirs:
-        if st.button(f"{d}", key=f"dir-{d}"):
-            st.session_state.nav_stack.append(d)
-
-    st.write("Files")
-    selected_file = None
-    for f in files:
-        if st.button(f"{f}", key=f"file-{f}"):
-            selected_file = os.path.join(current_path, f)
-
-    if selected_file:
-        st.write("---")
-        st.subheader(f"Viewing: {os.path.basename(selected_file)}")
-
-        if selected_file.endswith(".txt") or selected_file.endswith(".md"):
-            with open(selected_file, "r", encoding="utf-8") as f:
-                st.code(f.read(), language="markdown")
-        elif selected_file.endswith(".pdf"):
-            st.write("PDF Preview:")
-            st.pdf(selected_file)
+        if os.path.isdir(full_path):
+            nodes.append({
+                "label": item,
+                "value": full_path,
+                "children": build_notes_tree(full_path)
+            })
         else:
-            st.warning("No preview available for this file type.")
+            nodes.append({
+                "label": item,
+                "value": full_path,
+                "children": []
+            })
 
-def list_directory(path: str):
-    items = os.listdir(path)
-    dirs = []
-    files = []
+    return nodes
 
-    for item in items:
-        full = os.path.join(path, item)
-        if os.path.isdir(full):
-            dirs.append(item)
-        else:
-            files.append(item)
 
-    return sorted(dirs), sorted(files)
+def load_note_from_file(path):
+    with open(path, "r", encoding="utf-8") as f:
+        note = json.load(f)
+    fixed_text = []
+    for item in note.get("text", []):
+        content = item.get("content")
+        if isinstance(content, str):
+            try:
+                content = ast.literal_eval(content)
+            except:
+                content = {"blocks": []}
+        item["content"] = content
+        fixed_text.append(item)
+    note["text"] = fixed_text
+    note["path"] = path
+    return note
+
+def display_note_pretty(note):
+    title = note["text"][0]["title"]
+    st.subheader(title)
+    st.caption(note.get("timestamp", ""))
+    text_items = note.get("text", [])
+    if len(text_items) == 0:
+        st.info("This note has no content.")
+        return
+    content = text_items[0]["content"]
+    blocks = content.get("blocks", [])
+    render_editor_content(blocks)
+    with st.expander("Metadata"):
+        st.json({
+            "note_id": note["id"],
+            "note_timestamp": note["timestamp"],
+            "text_id": note["text"][0]["id"],
+            "text_timestamp": note["text"][0]["timestamp"],
+            "tags": note["text"][0].get("tags", []),
+            "title": note["text"][0].get("title", ""),
+            "path": note.get("path", "N/A"),
+        })
+
+    if st.button("🗑 Delete Note", key="delete_note"):
+        file_path = Path(note.get("path"))
+        if file_path.exists():
+            file_path.unlink()
+            st.success("Note deleted!")
+            current = file_path.parent
+            root = Path(ROOT).resolve()
+            while current != root:
+                try:
+                    if not any(current.iterdir()):
+                        current.rmdir()
+                    else:
+                        break
+                except OSError:
+                    break
+                current = current.parent
+            st.rerun()

@@ -39,6 +39,7 @@ def get_category(text: Text):
                 "role": "system",
                 "content":
                 (
+                    "Provide Tags and a title for each text input in JSON format.\n"
                     "Respond ONLY with valid JSON. No markdown, no explanation.\n"
                     "{\n"
                     "  \"tags\": [\"tag1\", \"tag2\"],\n"

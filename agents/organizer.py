@@ -20,6 +20,7 @@ def get_file_path(session: Session):
                 (
                     """
                     Return only a string of the file path of where this session should be saved.
+                    Do not include the date in the file path, the date will be added automatically.
                     The root of the path should be notes/. Use forward slashes.
                     The path should be based on the content of the session.
                     Here is the current folder structure of notes/:
@@ -29,7 +30,7 @@ def get_file_path(session: Session):
             },
             {
                 "role": "user",
-                "content": f"Please categorize the following text:\n\n{session.get_all()}",
+                "content": f"Please categorize the following text:\n\n{session.to_dict()}",
             },
         ],
         temperature=0.0,
