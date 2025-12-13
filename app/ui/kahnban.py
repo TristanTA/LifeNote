@@ -7,49 +7,56 @@ from pathlib import Path
 
 def render_kahnban():
     st.title("Kahn Ban")
-    st.selectbox("Board", )
+    st.selectbox("Board")
 
-class KBFile:
+class KahnbanApp:
     def __init__(self):
-        self.path = "boards.txt"
+        self.path = Path("boards.txt")
         self.boards = []
-
-    def load(self):
-        boards_file = Path(self.path).read_text(encoding="utf-8")
-        for board in boards_file:
-            pass
-
-    def save(self, board):
-        with open(self.path, "w", encoding="utf-8") as f:
-            f.write(f"""
-                
-            """)
-
-
-        
-
-class Board:
-    def __init__(self, name: str):
-        self.id = str(uuid.uuid4())
-        self.name = name
-        self.bins = {
-            "Backlog": Bin("Backlog"),
-            "Active": Bin("Active"),
-            "Review": Bin("Review"),
-            "Done": Bin("Done")
-        }
-
-class Bin:
-    def __init__(self, name: str):
-        self.id = str(uuid.uuid4())
-        self.name = name
+        self.bins = []
         self.tasks = []
 
-class Task:
-    def __init__(self, name: str, priority: int, deadline: datetime, important: bool, urgent: bool):
+    def load(self):
+        if self.path.exists():
+            with open(self.path, "r") as f:
+                data = f.read()
+                
+    
+    def save(self):
+        with open(self.path, "w") as f:
+            for board in self.boards:
+                f.write(f"Board: {board.name} (ID: {board.id})\n")
+                for bin in board.bins:
+                    f.write(f"Bin: {bin.name} (ID: {bin.id})\n")
+                    for task in bin.tasks:
+                        f.write(f"Task: {task.name} (ID: {task.id}, Priority: {task.priority}, Deadline: {task.deadline}, Important: {task.important}, Urgent: {task.urgent})\n")
+
+class Board:
+    def __init__(self, app: KahnbanApp, name: str):
         self.id = str(uuid.uuid4())
+        self.name = name
+        self.bins = [Bin(app, "Backlog", self), Bin(app, "Active", self), Bin(app, "Review", self), Bin(app, "Done", self)]
+
+        app.boards.append(self)
+
+class Bin:
+    def __init__(self, app: KahnbanApp, name: str, target_board: Board):
+        self.id = str(uuid.uuid4())
+        self.name = name
+        self.board = target_board
+        self.tasks = []
+
+        app.bins.append(self)
+
+class Task:
+    def __init__(self, app: KahnbanApp, name: str, target_bin: Bin, priority: int, deadline: datetime, important: bool, urgent: bool):
+        self.id = str(uuid.uuid4())
+        self.bin = target_bin
         self.name = name
         self.priority = priority
         self.deadline = deadline
         self.important = important
         self.urgent = urgent
+
+        target_bin.tasks.append(self)
+        app.tasks.append(self)
