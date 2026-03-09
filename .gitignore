@@ -1,4 +1,4 @@
-.venv
-__pycahce__
+.venv/
+__pycache__/
 .env
 *notes
